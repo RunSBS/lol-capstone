@@ -1,116 +1,146 @@
-// src/App.js
-import { useState } from "react";
-import "./App.css";
+
+import React, { useState, useEffect } from "react";
+import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+import BoardPage from "./pages/BoardPage";
+import PostDetailPage from "./pages/PostDetailPage";
+import WritePost from "./pages/WritePost";
+import Login from "./Login";
+import Register from "./Register";
+import AdminPage from "./pages/AdminPage";
+import HomePage from "./pages/HomePage";
+
+function initializeAdminAccount() {
+  const usersJson = localStorage.getItem("users");
+  const users = usersJson ? JSON.parse(usersJson) : [];
+  const adminExists = users.some((u) => u.username === "admin1");
+  if (!adminExists) {
+    users.push({ username: "admin1", password: "1234" });
+    localStorage.setItem("users", JSON.stringify(users));
+  }
+}
 
 function App() {
-    const [gameName, setGameName] = useState("");
-    const [tagLine, setTagLine] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [err, setErr] = useState(null);
-    const [view, setView] = useState(null);
+  const [currentUser, setCurrentUser] = useState(() =>
+    localStorage.getItem("currentUser")
+  );
+  const [showRegister, setShowRegister] = useState(false);
+  const adminId = "admin1";
 
-    // Data Dragon 버전 (서버에서 내려주도록 나중에 개선해도 됨)
-    const ddVer = "15.18.1";
+  useEffect(() => {
+    initializeAdminAccount();
+    const stored = localStorage.getItem("currentUser");
+    if (stored) setCurrentUser(stored);
+  }, []);
 
-    const onSubmit = async (e) => {
-        e.preventDefault();
-        setErr(null);
-        setView(null);
-        setLoading(true);
+  const handleLogin = (username) => setCurrentUser(username);
+  const handleLogout = () => {
+    localStorage.removeItem("currentUser");
+    setCurrentUser(null);
+  };
+  const toggleRegister = () => setShowRegister((prev) => !prev);
 
-        try {
-            const g = encodeURIComponent(gameName.trim());
-            const t = encodeURIComponent(tagLine.trim());
+  const handleForceLogout = (username) => {
+    if (username === currentUser) {
+      alert("본인이 강제 탈퇴 당했습니다. 로그아웃 처리 됩니다.");
+      handleLogout();
+    }
+  };
 
-            const res = await fetch(`/summoner/view/${g}/${t}`, { method: "POST" });
-            if (!res.ok) {
-                throw new Error(`HTTP ${res.status} - ${await res.text()}`);
-            }
-            const v = await res.json();
-            setView(v);
-        } catch (e) {
-            setErr(String(e));
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const renderResult = () => {
-        if (loading) return <div className="row">불러오는 중…</div>;
-
-        // 요청 성공
-        if (view) {
-            const iconUrl = `https://ddragon.leagueoflegends.com/cdn/${ddVer}/img/profileicon/${view.profileIconId}.png`;
-            return (
-                <div>
-                    <div className="row"><strong>Riot ID</strong> : {view.gameName}#{view.tagLine}</div>
-                    <div className="row"><strong>닉네임</strong> : {view.gameName}</div>
-                    <div className="row"><strong>태그</strong> : #{view.tagLine}</div>
-                    <div className="row"><strong>PUUID</strong> : {view.puuid}</div>
-                    <div className="row"><strong>레벨</strong> : {view.summonerLevel ?? ""}</div>
-                    <div className="row"><strong>마지막 수정 시간</strong> : {view.revisionDate ?? ""}</div>
-                    <div className="row">
-                        <strong>아이콘</strong> :{" "}
-                        <img
-                            src={iconUrl}
-                            alt="profile icon"
-                            width={64}
-                            height={64}
-                            onError={(e) => { e.currentTarget.style.display = "none"; }}
-                        />
-                    </div>
-                </div>
-            );
-        }
-
-        // 요청 실패 (에러가 있을 때만 하드코딩 값)
-        if (err) {
-            return (
-                <div>
-                    <div className="row"><strong>Riot ID</strong> : Riot#ID</div>
-                    <div className="row"><strong>닉네임</strong> : 닉네임</div>
-                    <div className="row"><strong>태그</strong> : #KR1</div>
-                    <div className="row"><strong>PUUID</strong> : DEFAULT-PUUID</div>
-                    <div className="row"><strong>레벨</strong> : 999</div>
-                    <div className="row"><strong>마지막 수정 시간</strong> : 2025-09-29</div>
-                    <div className="row"><strong>아이콘</strong> : 아이콘</div>
-                </div>
-            );
-        }
-
-        // 제출 전에는 아무것도 안 보이게
-        return null;
-    };
-
-
-
-    return (
-        <div className="App">
-            <form id="searchForm" onSubmit={onSubmit}>
-                닉네임 :{" "}
-                <input
-                    type="text"
-                    id="gameName"
-                    name="gameName"
-                    value={gameName}
-                    onChange={(e) => setGameName(e.target.value)}
-                />
-                <br />
-                태그 :{" "}
-                <input
-                    type="text"
-                    id="tagLine"
-                    name="tagLine"
-                    value={tagLine}
-                    onChange={(e) => setTagLine(e.target.value)}
-                />
-                <br />
-                <button type="submit" disabled={loading}>제출</button>
-            </form>
-
-            <div id="result" style={{ marginTop: 12 }}>{renderResult()}</div>
+  return (
+    <BrowserRouter>
+      <nav
+        style={{
+          marginBottom: 10,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <div>
+          <Link to="/">
+            <button>홈</button>
+          </Link>
+          <Link to="/free">
+            <button>자유게시판</button>
+          </Link>
+          <Link to="/guide">
+            <button>공략</button>
+          </Link>
+          <Link to="/lolmuncheol">
+            <button>롤문철</button>
+          </Link>
+          {currentUser ? (
+            <Link to="/write">
+              <button>글쓰기</button>
+            </Link>
+          ) : (
+            <button disabled title="로그인 후 이용 가능">
+              글쓰기
+            </button>
+          )}
         </div>
-    );
+
+        <div>
+          {currentUser ? (
+            <>
+              <span>{currentUser}님 환영합니다.</span>
+              <button onClick={handleLogout} style={{ marginLeft: 10 }}>
+                로그아웃
+              </button>
+              {currentUser === adminId && (
+                <Link to="/admin">
+                  <button
+                    style={{
+                      marginLeft: 20,
+                      backgroundColor: "#444",
+                      color: "white",
+                    }}
+                  >
+                    관리자기능
+                  </button>
+                </Link>
+              )}
+            </>
+          ) : (
+            <>
+              <Link to="/login">
+                <button>로그인</button>
+              </Link>
+              <Link to="/register">
+                <button>회원가입</button>
+              </Link>
+            </>
+          )}
+        </div>
+      </nav>
+
+      <hr style={{ marginBottom: 20 }} />
+
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/free" element={<BoardPage category="free" />} />
+        <Route path="/guide" element={<BoardPage category="guide" />} />
+        <Route path="/lolmuncheol" element={<BoardPage category="lolmuncheol" />} />
+        <Route
+          path="/post/:id"
+          element={<PostDetailPage currentUser={currentUser} adminId={adminId} />}
+        />
+        <Route path="/write" element={<WritePost currentUser={currentUser} />} />
+        <Route
+          path="/login"
+          element={
+            showRegister ? (
+              <Register onRegister={toggleRegister} />
+            ) : (
+              <Login onLogin={handleLogin} onShowRegister={toggleRegister} />
+            )
+          }
+        />
+        <Route path="/register" element={<Register onRegister={() => setShowRegister(false)} />} />
+        <Route path="/admin" element={<AdminPage adminId={adminId} onForceLogout={handleForceLogout} />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
 export default App;
